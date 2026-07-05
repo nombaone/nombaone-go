@@ -42,6 +42,24 @@ type Client struct {
 	Invoices *InvoicesService
 	// Coupons are reusable discount rules.
 	Coupons *CouponsService
+	// PaymentMethods are cards, mandates, and virtual accounts.
+	PaymentMethods *PaymentMethodsService
+	// Mandates are direct-debit (NIBSS) mandates.
+	Mandates *MandatesService
+	// Settlements, refunds, payouts, and escrow.
+	Settlements *SettlementsService
+	// WebhookEndpoints manage the URLs that receive signed events, with a
+	// Deliveries sub-namespace.
+	WebhookEndpoints *WebhookEndpointsService
+	// Events is the append-only domain-event log — your reconciliation
+	// backstop.
+	Events *EventsService
+	// Organization is tenant settings, with a Billing policy sub-namespace.
+	Organization *OrganizationService
+	// Metrics are billing KPIs computed from the ledger.
+	Metrics *MetricsService
+	// Sandbox holds the sandbox-only simulation instruments.
+	Sandbox *SandboxService
 }
 
 // New constructs a client. The API key is taken from [WithAPIKey] or, when
@@ -122,6 +140,21 @@ func (c *Client) initResources() {
 
 	c.Invoices = &InvoicesService{client: c}
 	c.Coupons = &CouponsService{client: c}
+
+	c.PaymentMethods = &PaymentMethodsService{client: c}
+	c.Mandates = &MandatesService{client: c}
+	c.Settlements = &SettlementsService{client: c}
+
+	c.WebhookEndpoints = &WebhookEndpointsService{client: c}
+	c.WebhookEndpoints.Deliveries = &WebhookEndpointDeliveriesService{client: c}
+
+	c.Events = &EventsService{client: c}
+
+	c.Organization = &OrganizationService{client: c}
+	c.Organization.Billing = &OrganizationBillingService{client: c}
+
+	c.Metrics = &MetricsService{client: c}
+	c.Sandbox = &SandboxService{client: c}
 }
 
 // Mode reports the environment this client talks to, derived from the key
