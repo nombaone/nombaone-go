@@ -31,6 +31,17 @@ type Client struct {
 	// Customers is the customers namespace — the people and businesses you
 	// bill, plus their credit and discounts.
 	Customers *CustomersService
+	// Plans is your catalog. Prices nest under Plans.Prices.
+	Plans *PlansService
+	// Prices reads and deactivates prices (create/list under Plans.Prices).
+	Prices *PricesService
+	// Subscriptions is the core billing object, with Schedule and Dunning
+	// sub-namespaces.
+	Subscriptions *SubscriptionsService
+	// Invoices reads what billing produced, and voids the uncollectible.
+	Invoices *InvoicesService
+	// Coupons are reusable discount rules.
+	Coupons *CouponsService
 }
 
 // New constructs a client. The API key is taken from [WithAPIKey] or, when
@@ -100,6 +111,17 @@ func New(opts ...Option) (*Client, error) {
 // resource namespace is added.
 func (c *Client) initResources() {
 	c.Customers = &CustomersService{client: c}
+
+	c.Plans = &PlansService{client: c}
+	c.Plans.Prices = &PlanPricesService{client: c}
+	c.Prices = &PricesService{client: c}
+
+	c.Subscriptions = &SubscriptionsService{client: c}
+	c.Subscriptions.Schedule = &SubscriptionScheduleService{client: c}
+	c.Subscriptions.Dunning = &SubscriptionDunningService{client: c}
+
+	c.Invoices = &InvoicesService{client: c}
+	c.Coupons = &CouponsService{client: c}
 }
 
 // Mode reports the environment this client talks to, derived from the key

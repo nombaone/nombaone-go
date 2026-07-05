@@ -24,3 +24,16 @@ func addQueryInt(q url.Values, key string, val *int) {
 		q.Set(key, strconv.Itoa(*val))
 	}
 }
+
+func addQueryBool(q url.Values, key string, val *bool) {
+	if val != nil {
+		q.Set(key, strconv.FormatBool(*val))
+	}
+}
+
+// addQueryEnum adds a typed string-enum filter unless it is the zero value.
+func addQueryEnum[T ~string](q url.Values, key string, val T) {
+	if val != "" {
+		q.Set(key, string(val))
+	}
+}
