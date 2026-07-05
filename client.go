@@ -28,7 +28,9 @@ type Client struct {
 	defaultHeader http.Header
 	mode          Mode
 
-	// Resource services are wired in initResources (added per phase).
+	// Customers is the customers namespace — the people and businesses you
+	// bill, plus their credit and discounts.
+	Customers *CustomersService
 }
 
 // New constructs a client. The API key is taken from [WithAPIKey] or, when
@@ -96,7 +98,9 @@ func New(opts ...Option) (*Client, error) {
 
 // initResources wires every resource service to the client. Extended as each
 // resource namespace is added.
-func (c *Client) initResources() {}
+func (c *Client) initResources() {
+	c.Customers = &CustomersService{client: c}
+}
 
 // Mode reports the environment this client talks to, derived from the key
 // prefix. It is read-only.

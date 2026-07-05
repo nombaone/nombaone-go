@@ -58,7 +58,7 @@ func (m *mockTransport) Do(req *http.Request) (*http.Response, error) {
 	m.calls = append(m.calls, recordedCall{
 		Method: req.Method,
 		URL:    req.URL.String(),
-		Path:   req.URL.Path,
+		Path:   req.URL.EscapedPath(), // the path as it goes on the wire
 		Query:  req.URL.RawQuery,
 		Header: req.Header.Clone(),
 		Body:   body,
