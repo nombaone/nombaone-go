@@ -20,16 +20,20 @@ The package import path is **`github.com/nombaone/nombaone-go`**.
 
    The import path must match this URL — do not rename the org or repo.
 
-2. **Push this code to it** (from the SDK folder):
+2. **Push this code to it, once** (from the SDK folder). This is the only time
+   you ever run a `git push` by hand — and it is setup, not a release:
 
    ```bash
    git remote add origin https://github.com/nombaone/nombaone-go.git
    git push -u origin main
    ```
 
+   This first push triggers CI, which will auto-tag and publish `v0.1.0` for you
+   (see the release ritual below) — **you do not tag or push anything yourself.**
+
 3. That's it. There is **no account to register**, no publisher to authorize, no
-   secret to add. CI (GitHub Actions) is already configured and will run the
-   quality gate on every push.
+   secret to add, and **no tag to push — ever**. CI does all tagging and
+   releasing automatically on merge to `main`.
 
 ---
 
