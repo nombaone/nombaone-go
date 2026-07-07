@@ -544,8 +544,12 @@ func (s *SubscriptionsService) Change(ctx context.Context, id string, params Sub
 // UpdatePaymentMethod swaps the payment method that bills this subscription —
 // the card-update path during dunning. Set exactly one of
 // PaymentMethodReference or CheckoutToken.
-func (s *SubscriptionsService) UpdatePaymentMethod(ctx context.Context, id string, params SubscriptionUpdatePaymentMethodParams, opts ...RequestOption) (*Subscription, error) {
-	res, err := execute[Subscription](ctx, s.client, requestSpec{
+//
+// It returns the attached [PaymentMethod] (not the subscription): the wire
+// responds with the payment-method object even though the OpenAPI spec labels
+// it a Subscription — verified against the live sandbox.
+func (s *SubscriptionsService) UpdatePaymentMethod(ctx context.Context, id string, params SubscriptionUpdatePaymentMethodParams, opts ...RequestOption) (*PaymentMethod, error) {
+	res, err := execute[PaymentMethod](ctx, s.client, requestSpec{
 		method: http.MethodPost, path: "/subscriptions/" + seg(id) + "/payment-method", body: params, opts: opts,
 	})
 	if err != nil {

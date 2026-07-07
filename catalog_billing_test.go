@@ -222,7 +222,7 @@ func TestSubscriptions_WireContract(t *testing.T) {
 		}, wantBody: map[string]any{"priceId": "nbo2prc"}},
 		{name: "updatePaymentMethod", method: http.MethodPost, path: "/v1/subscriptions/nbo1sub/payment-method", call: func(c *Client) {
 			_, _ = c.Subscriptions.UpdatePaymentMethod(ctx, "nbo1sub", SubscriptionUpdatePaymentMethodParams{CheckoutToken: String("tok")})
-		}},
+		}, wantBody: map[string]any{"checkoutToken": "tok"}},
 		{name: "retrieveUpcomingInvoice", method: http.MethodGet, path: "/v1/subscriptions/nbo1sub/upcoming-invoice", call: func(c *Client) { _, _ = c.Subscriptions.RetrieveUpcomingInvoice(ctx, "nbo1sub") }},
 		{name: "applyDiscount", method: http.MethodPost, path: "/v1/subscriptions/nbo1sub/discount", call: func(c *Client) {
 			_, _ = c.Subscriptions.ApplyDiscount(ctx, "nbo1sub", SubscriptionApplyDiscountParams{Coupon: "X"})
@@ -285,5 +285,25 @@ func TestSubscriptions_UnmarshalsRichObject(t *testing.T) {
 	}
 	if sub.DefaultPaymentMethodID == nil || *sub.DefaultPaymentMethodID != "nbo1pmt" {
 		t.Errorf("DefaultPaymentMethodID = %v", sub.DefaultPaymentMethodID)
+	}
+}
+
+// TestSubscriptions_UpdatePaymentMethodReturnsPaymentMethod locks the wire
+// truth: this endpoint responds with a PaymentMethod (domain "payment_method",
+// id …pmt), not a Subscription — confirmed against the live sandbox.
+func TestSubscriptions_UpdatePaymentMethodReturnsPaymentMethod(t *testing.T) {
+	pmJSON := `{"domain":"payment_method","id":"nbo132366265063pmt","customerId":"nbo1cus","kind":"card","status":"active","isDefault":true,"brand":"visa","last4":"4242","expMonth":12,"expYear":2030,"mode":"sandbox","createdAt":"2026-07-05T00:00:00.000Z","updatedAt":"2026-07-05T00:00:00.000Z"}`
+	m := newMock(scriptedResponse{status: http.StatusOK, body: okEnvelope(pmJSON)})
+	c := testClient(t, m)
+
+	pm, err := c.Subscriptions.UpdatePaymentMethod(context.Background(), "nbo1sub", SubscriptionUpdatePaymentMethodParams{PaymentMethodReference: String("nbo132366265063pmt")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pm.Domain != "payment_method" {
+		t.Errorf("domain = %q, want payment_method", pm.Domain)
+	}
+	if pm.Kind != PaymentMethodKindCard || pm.Last4 == nil || *pm.Last4 != "4242" {
+		t.Errorf("did not decode as a PaymentMethod: %+v", pm)
 	}
 }
