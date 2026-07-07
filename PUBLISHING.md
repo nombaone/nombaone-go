@@ -35,33 +35,30 @@ The package import path is **`github.com/nombaone/nombaone-go`**.
 
 ## The release ritual (every release)
 
-Three steps. No uploads, no tokens, no laptop ceremony beyond a tag.
+**Two steps. No tags, no uploads, no tokens, no laptop ceremony.**
 
-1. **Bump the one version line** in [`version.go`](version.go):
+1. **Bump the one version line** in [`version.go`](version.go), and add a matching
+   section to [`CHANGELOG.md`](CHANGELOG.md):
 
    ```go
    const Version = "0.1.0"   // → change to "0.1.1", "0.2.0", …
    ```
 
-   Add a matching section to [`CHANGELOG.md`](CHANGELOG.md).
+2. **Merge to `main`.** That's the whole release.
 
-2. **Commit and merge to `main`.** CI runs the full quality gate (format, vet,
-   staticcheck, tests on Go 1.23 and 1.24). Never release red.
+CI does the rest automatically: it runs the full quality gate (format, vet,
+staticcheck, tests on Go 1.23 and 1.24), then — only if `version.go` names a
+version with no tag yet — creates and pushes the `vX.Y.Z` tag and cuts a GitHub
+Release. Within about a minute, `go get github.com/nombaone/nombaone-go@v0.1.0`
+works worldwide. **The tag is the release; the Go module proxy serves it.**
 
-3. **Tag the release and push the tag:**
+> **"Publish only if new" is automatic.** The auto-tag job skips when the tag
+> already exists, and Git tags are immutable on the Go proxy — a version
+> publishes exactly once. A merge that doesn't bump the version line is a no-op.
+> Always bump the version.
 
-   ```bash
-   git tag v0.1.0        # the "v" prefix is required; must match version.go
-   git push origin v0.1.0
-   ```
-
-   Pushing the tag triggers the release workflow, which re-runs the gate and cuts
-   a GitHub Release. **The tag is the release** — within about a minute,
-   `go get github.com/nombaone/nombaone-go@v0.1.0` works worldwide.
-
-> **"Publish only if new" is automatic.** Git tags are immutable on the Go proxy:
-> a version can be published exactly once. Re-running the ritual without bumping
-> the version line is a no-op (the tag already exists). Always bump the version.
+> You never run `git tag` by hand. If you ever need to (e.g. re-cut a botched
+> release), delete the bad tag first — the proxy caches the first thing it saw.
 
 ---
 

@@ -33,3 +33,41 @@ jobs:
         run: go test -race -count=1 ./...
       - name: build
         run: go build ./...
+
+  # Merge-triggered release. When `main` is green and version.go names a version
+  # with no matching tag yet, push `vX.Y.Z` and cut a GitHub Release. The Go
+  # module proxy serves the tag directly — nothing else to publish. Bumping the
+  # Version line and merging is the whole ritual; a merge that doesn't bump the
+  # version is a no-op.
+  release:
+    name: Auto-tag release
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Read version from version.go
+        id: version
+        run: |
+          VERSION=$(grep -oE 'Version = "[0-9]+\.[0-9]+\.[0-9]+"' version.go | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not read Version from version.go" && exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Tag and release if the version is new
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q .; then
+            echo "Tag ${TAG} already exists — no release."
+            exit 0
+          fi
+          echo "Releasing ${TAG}"
+          git tag "${TAG}"          # lightweight tag; the module proxy serves it
+          git push origin "${TAG}"
+          gh release create "${TAG}" --title "${TAG}" --notes "See CHANGELOG.md for details." --verify-tag
