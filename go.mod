@@ -1,3 +1,3 @@
-module github.com/nomba/nomba-go
+module github.com/nombaone/nombaone-go
 
 go 1.23

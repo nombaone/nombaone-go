@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	nombaone "github.com/nomba/nomba-go"
+	nombaone "github.com/nombaone/nombaone-go"
 )
 
 // TestIntegrationFullSurface exercises every SDK method against a real sandbox.
@@ -21,10 +21,31 @@ import (
 //	NOMBAONE_BASE_URL=https://sandbox.api.nombaone.xyz \
 //	go test -run TestIntegrationFullSurface -v ./...
 
-// expectOKOr passes if err is nil or a tolerated API error code; otherwise fails.
+// tally accumulates the owner-legible verdict across every method call-site.
+type tally struct {
+	ok       int // succeeded outright
+	expected int // returned a specific, expected typed API error
+	defects  int // parse mismatch, crash, transport failure, or wrong error code
+}
+
+// surf is the process-wide tally for the full-surface run (the test runs once).
+var surf tally
+
+func (ta *tally) report(t *testing.T) {
+	t.Helper()
+	total := ta.ok + ta.expected + ta.defects
+	t.Logf("────────────────────────────────────────────────────────")
+	t.Logf("VERDICT: %d method checks across 15 namespaces | ok %d | expected-errors %d | DEFECTS %d",
+		total, ta.ok, ta.expected, ta.defects)
+	t.Logf("────────────────────────────────────────────────────────")
+}
+
+// expectOKOr passes if err is nil or a tolerated API error code; otherwise it
+// records a DEFECT. It also records the outcome into the shared verdict tally.
 func expectOKOr(t *testing.T, label string, err error, tolerated ...nombaone.ErrorCode) bool {
 	t.Helper()
 	if err == nil {
+		surf.ok++
 		t.Logf("✓ %s", label)
 		return true
 	}
@@ -32,23 +53,41 @@ func expectOKOr(t *testing.T, label string, err error, tolerated ...nombaone.Err
 	if errors.As(err, &apiErr) {
 		for _, c := range tolerated {
 			if apiErr.Code == c {
-				t.Logf("✓ %s (tolerated %s)", label, apiErr.Code)
+				surf.expected++
+				t.Logf("✓ %s (expected %s)", label, apiErr.Code)
 				return false
 			}
 		}
-		t.Errorf("✗ %s — unexpected API error %s: %s", label, apiErr.Code, apiErr.Hint)
+		surf.defects++
+		t.Errorf("✗ DEFECT %s — unexpected API error %s: %s", label, apiErr.Code, apiErr.Hint)
 		return false
 	}
-	t.Errorf("✗ %s — non-API error: %v", label, err)
+	surf.defects++
+	t.Errorf("✗ DEFECT %s — non-API error: %v", label, err)
 	return false
 }
 
 func mustOK(t *testing.T, label string, err error) {
 	t.Helper()
 	if err != nil {
-		t.Fatalf("✗ %s — %v", label, err)
+		surf.defects++
+		t.Fatalf("✗ DEFECT %s — %v", label, err)
 	}
+	surf.ok++
 	t.Logf("✓ %s", label)
+}
+
+// wantDomain asserts a response object's discriminator matches the type the SDK
+// claims — catching a silent wire/model mismatch (Go's json decoder does not
+// error on a wrong-but-overlapping shape). A mismatch is a DEFECT.
+func wantDomain(t *testing.T, label, got, want string) {
+	t.Helper()
+	if got != want {
+		surf.defects++
+		t.Errorf("✗ DEFECT %s — response domain=%q, want %q (wire/model mismatch)", label, got, want)
+		return
+	}
+	t.Logf("  ↳ %s domain=%q ✓", label, got)
 }
 
 func fullClient(t *testing.T) *nombaone.Client {
@@ -76,24 +115,32 @@ func TestIntegrationFullSurface(t *testing.T) {
 	ctx := context.Background()
 	uniq := fmt.Sprintf("go-full-%d", time.Now().UnixNano())
 
+	// Print the owner-legible verdict after every subtest has run.
+	t.Cleanup(func() { surf.report(t) })
+
 	// ---- Shared setup: catalog + a subscriber + a chargeable card ----
 	plan, err := client.Plans.Create(ctx, nombaone.PlanCreateParams{Name: "Full " + uniq, Description: nombaone.String("full-surface plan")})
 	mustOK(t, "plans.Create", err)
+	wantDomain(t, "plans.Create", plan.Domain, "plan")
 	priceMonthly, err := client.Plans.Prices.Create(ctx, plan.ID, nombaone.PriceCreateParams{UnitAmountInKobo: 250_000, Interval: nombaone.PriceIntervalMonth})
 	mustOK(t, "plans.Prices.Create (monthly)", err)
+	wantDomain(t, "plans.Prices.Create", priceMonthly.Domain, "price")
 	priceUpgrade, err := client.Plans.Prices.Create(ctx, plan.ID, nombaone.PriceCreateParams{UnitAmountInKobo: 500_000, Interval: nombaone.PriceIntervalMonth})
 	mustOK(t, "plans.Prices.Create (upgrade)", err)
 
 	customer, err := client.Customers.Create(ctx, nombaone.CustomerCreateParams{Email: uniq + "@example.com", Name: "Full Surface"})
 	mustOK(t, "customers.Create", err)
+	wantDomain(t, "customers.Create", customer.Domain, "customer")
 
 	card, err := client.Sandbox.CreatePaymentMethod(ctx, nombaone.SandboxPaymentMethodParams{CustomerID: customer.ID, Behavior: nombaone.SandboxBehaviorSuccess})
 	mustOK(t, "sandbox.CreatePaymentMethod", err)
+	wantDomain(t, "sandbox.CreatePaymentMethod", card.Domain, "payment_method")
 	card2, err := client.Sandbox.CreatePaymentMethod(ctx, nombaone.SandboxPaymentMethodParams{CustomerID: customer.ID, Behavior: nombaone.SandboxBehaviorSuccess})
 	mustOK(t, "sandbox.CreatePaymentMethod (2nd)", err)
 
 	coupon, err := client.Coupons.Create(ctx, nombaone.CouponCreateParams{Code: "FULL" + uniq[len(uniq)-6:], PercentOff: nombaone.Int(15), Duration: nombaone.CouponDurationOnce})
 	mustOK(t, "coupons.Create", err)
+	wantDomain(t, "coupons.Create", coupon.Domain, "coupon")
 
 	t.Run("customers", func(t *testing.T) {
 		_, err := client.Customers.Retrieve(ctx, customer.ID)
@@ -154,6 +201,7 @@ func TestIntegrationFullSurface(t *testing.T) {
 			CustomerID: customer.ID, PriceID: priceMonthly.ID, PaymentMethodID: nombaone.String(card.ID),
 		})
 		mustOK(t, "subscriptions.Create", err)
+		wantDomain(t, "subscriptions.Create", sub.Domain, "subscription")
 		return sub
 	}
 
@@ -175,8 +223,11 @@ func TestIntegrationFullSurface(t *testing.T) {
 		expectOKOr(t, "subscriptions.Dunning.ListAttempts", err)
 		_, err = client.Subscriptions.Change(ctx, sub.ID, nombaone.SubscriptionChangeParams{PriceID: nombaone.String(priceUpgrade.ID)})
 		expectOKOr(t, "subscriptions.Change (prorated upgrade)", err)
-		_, err = client.Subscriptions.UpdatePaymentMethod(ctx, sub.ID, nombaone.SubscriptionUpdatePaymentMethodParams{PaymentMethodReference: nombaone.String(card2.ID)})
-		expectOKOr(t, "subscriptions.UpdatePaymentMethod", err)
+		pm, err := client.Subscriptions.UpdatePaymentMethod(ctx, sub.ID, nombaone.SubscriptionUpdatePaymentMethodParams{PaymentMethodReference: nombaone.String(card2.ID)})
+		if expectOKOr(t, "subscriptions.UpdatePaymentMethod", err) {
+			// The wire returns a PaymentMethod here, not a Subscription.
+			wantDomain(t, "subscriptions.UpdatePaymentMethod", pm.Domain, "payment_method")
+		}
 		_, err = client.Subscriptions.ApplyDiscount(ctx, sub.ID, nombaone.SubscriptionApplyDiscountParams{Coupon: coupon.Code})
 		expectOKOr(t, "subscriptions.ApplyDiscount", err, nombaone.ErrCodeCouponAlreadyApplied)
 		_, err = client.Subscriptions.RemoveDiscount(ctx, sub.ID)
@@ -219,8 +270,11 @@ func TestIntegrationFullSurface(t *testing.T) {
 		sub := newActiveSub(t)
 		cycle, err := client.Sandbox.AdvanceCycle(ctx, sub.ID)
 		mustOK(t, "sandbox.AdvanceCycle", err)
-		_, err = client.Invoices.Retrieve(ctx, cycle.Invoice.ID)
-		expectOKOr(t, "invoices.Retrieve", err)
+		wantDomain(t, "sandbox.AdvanceCycle.invoice", cycle.Invoice.Domain, "invoice")
+		inv, err := client.Invoices.Retrieve(ctx, cycle.Invoice.ID)
+		if expectOKOr(t, "invoices.Retrieve", err) {
+			wantDomain(t, "invoices.Retrieve", inv.Domain, "invoice")
+		}
 		_, err = client.Invoices.List(ctx, nombaone.InvoiceListParams{CustomerID: nombaone.String(customer.ID), Status: nombaone.InvoiceStatusPaid})
 		expectOKOr(t, "invoices.List", err)
 		_, err = client.Invoices.Void(ctx, cycle.Invoice.ID, nombaone.InvoiceVoidParams{Comment: nombaone.String("test void")})
@@ -242,8 +296,10 @@ func TestIntegrationFullSurface(t *testing.T) {
 		expectOKOr(t, "paymentMethods.Setup", err)
 		_, err = client.PaymentMethods.CreateVirtualAccount(ctx, nombaone.PaymentMethodVirtualAccountParams{CustomerRef: customer.ID})
 		expectOKOr(t, "paymentMethods.CreateVirtualAccount", err)
-		_, err = client.PaymentMethods.Retrieve(ctx, card.ID)
-		expectOKOr(t, "paymentMethods.Retrieve", err)
+		gotPM, err := client.PaymentMethods.Retrieve(ctx, card.ID)
+		if expectOKOr(t, "paymentMethods.Retrieve", err) {
+			wantDomain(t, "paymentMethods.Retrieve", gotPM.Domain, "payment_method")
+		}
 		_, err = client.PaymentMethods.List(ctx, nombaone.PaymentMethodListParams{CustomerRef: nombaone.String(customer.ID)})
 		expectOKOr(t, "paymentMethods.List", err)
 		_, err = client.PaymentMethods.SetDefault(ctx, card.ID)
@@ -369,8 +425,11 @@ func TestIntegrationFullSurface(t *testing.T) {
 		page, err := client.Events.List(ctx, nombaone.EventListParams{Limit: nombaone.Int(5)})
 		mustOK(t, "events.List", err)
 		if len(page.Data) > 0 {
-			_, err = client.Events.Retrieve(ctx, page.Data[0].ID)
-			expectOKOr(t, "events.Retrieve", err)
+			wantDomain(t, "events.List item", page.Data[0].Domain, "event")
+			ev, err := client.Events.Retrieve(ctx, page.Data[0].ID)
+			if expectOKOr(t, "events.Retrieve", err) {
+				wantDomain(t, "events.Retrieve", ev.Domain, "event")
+			}
 		}
 		catalog, err := client.Events.Catalog(ctx)
 		if expectOKOr(t, "events.Catalog", err) {

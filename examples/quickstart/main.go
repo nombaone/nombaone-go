@@ -11,7 +11,7 @@ import (
 	"log"
 	"time"
 
-	nombaone "github.com/nomba/nomba-go"
+	nombaone "github.com/nombaone/nombaone-go"
 )
 
 func main() {

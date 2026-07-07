@@ -143,7 +143,7 @@ func (s *WebhookEndpointDeliveriesService) Replay(ctx context.Context, endpointI
 
 // WebhookEndpointsService registers and manages the URLs that receive signed
 // events. To verify incoming deliveries in your handler, use the standalone
-// github.com/nomba/nomba-go/webhook package — the crypto helper, not this REST
+// github.com/nombaone/nombaone-go/webhook package — the crypto helper, not this REST
 // resource.
 type WebhookEndpointsService struct {
 	client *Client

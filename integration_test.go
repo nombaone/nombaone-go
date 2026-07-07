@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	nombaone "github.com/nomba/nomba-go"
-	"github.com/nomba/nomba-go/webhook"
+	nombaone "github.com/nombaone/nombaone-go"
+	"github.com/nombaone/nombaone-go/webhook"
 )
 
 // End-to-end suite against a real (deployed or local) NombaOne sandbox API.

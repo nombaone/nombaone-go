@@ -47,6 +47,6 @@
 // such as [NotFoundError] or [RateLimitError].
 //
 // The client is server-side only — there is no publishable key. Verify incoming
-// webhooks with the standalone [github.com/nomba/nomba-go/webhook] package,
+// webhooks with the standalone [github.com/nombaone/nombaone-go/webhook] package,
 // which needs only the endpoint's signing secret, never an API key.
 package nombaone

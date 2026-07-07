@@ -1,12 +1,12 @@
-# Build summary — nomba-go v0.1.0
+# Build summary — nombaone-go v0.1.0
 
 Official Go SDK for the NombaOne subscription-billing API. Module
-`github.com/nomba/nomba-go`, Go 1.23+, **zero third-party dependencies**.
+`github.com/nombaone/nombaone-go`, Go 1.23+, **zero third-party dependencies**.
 
 ## What shipped
 
 - Full **83-operation** surface across **15 namespaces** plus a standalone
-  `github.com/nomba/nomba-go/webhook` package (usable without an API key).
+  `github.com/nombaone/nombaone-go/webhook` package (usable without an API key).
 - Transport with the money-safety invariants: `/v1` applied once, idempotency
   key computed once **before** the retry loop, retries on transport/timeout/
   408/429/5xx and 409-only-when-`IDEMPOTENCY_IN_PROGRESS`, caller cancellation
@@ -27,10 +27,17 @@ Official Go SDK for the NombaOne subscription-billing API. Module
   no SDK call outside the spec); the **deliberate-break drill** was performed
   (breaking one path turns the suite red naming the route, then reverted).
 - **Live integration against the deployed sandbox** (`https://sandbox.api.nombaone.xyz`):
-  the core lifecycle suite (7 checks) **and** a full-surface suite exercising
-  **every one of the 91 method call-sites** — all green. Each method passes only
-  on success or a *specific expected* typed API error, so a wrong path/verb/body
-  still fails.
+  the core lifecycle suite (7 checks) **and** a full-surface suite that exercises
+  every method across all 15 namespaces and **asserts the `domain` discriminator
+  on returned objects** (so a silent wire/model mismatch is a defect, not a pass).
+  Owner-legible verdict: **`89 method checks across 15 namespaces | ok 83 |
+  expected-errors 6 | DEFECTS 0`**. Each method passes only on success or a
+  *specific expected* typed API error.
+- **Pre-release bug caught by the gate:** `subscriptions.UpdatePaymentMethod`
+  returns a **PaymentMethod** on the wire (domain `payment_method`, id `…pmt`),
+  not the Subscription the spec claims — verified live and corrected before
+  release (the same mismatch the Ruby/Rust/.NET SDKs hit). The strengthened
+  domain assertions now lock it.
 - Module **consumed from a scratch external module** (via local `replace`) and
   built + vetted clean.
 

@@ -1,9 +1,9 @@
-# nomba-go
+# nombaone-go
 
 The official Go SDK for the [Nomba One](https://nombaone.xyz) subscription-billing API — recurring billing for Nigeria over card, direct debit, bank transfer, and more, with dunning that recovers and a ledger that never loses a kobo.
 
 ```bash
-go get github.com/nomba/nomba-go
+go get github.com/nombaone/nombaone-go
 ```
 
 Requires Go 1.23+. Zero dependencies (standard library only).
@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"log"
 
-	nombaone "github.com/nomba/nomba-go"
+	nombaone "github.com/nombaone/nombaone-go"
 )
 
 func main() {
@@ -165,7 +165,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/nomba/nomba-go/webhook"
+	"github.com/nombaone/nombaone-go/webhook"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {

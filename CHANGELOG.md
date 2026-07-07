@@ -35,7 +35,7 @@ Initial release of the official Go SDK for the NombaOne subscription-billing API
   methods, mandates, settlements, webhook endpoints (+deliveries), events,
   organization (+billing), metrics, and the sandbox toolkit (which fails
   locally with `ErrSandboxRequiresSandboxKey` when given a live key).
-- **Webhooks** — standalone `github.com/nomba/nomba-go/webhook` package
+- **Webhooks** — standalone `github.com/nombaone/nombaone-go/webhook` package
   (no API key required): `ConstructEvent`, `VerifySignature`,
   `GenerateTestHeader`, the open ~32-type event catalog, and a generic
   `DecodeData[T]` helper. Passes the golden signature vector byte-for-byte.
@@ -45,5 +45,5 @@ Initial release of the official Go SDK for the NombaOne subscription-billing API
   across-retries invariant, the webhook rejection matrix, a bidirectional
   OpenAPI conformance suite, and an env-gated live integration suite.
 
-[Unreleased]: https://github.com/nomba/nomba-go/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/nomba/nomba-go/releases/tag/v0.1.0
+[Unreleased]: https://github.com/nombaone/nombaone-go/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/nombaone/nombaone-go/releases/tag/v0.1.0

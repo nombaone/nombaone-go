@@ -12,7 +12,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/nomba/nomba-go/webhook"
+	"github.com/nombaone/nombaone-go/webhook"
 )
 
 // seen dedupes deliveries — delivery is at-least-once, never exactly-once.
