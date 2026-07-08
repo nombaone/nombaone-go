@@ -10,7 +10,7 @@ Requires Go 1.23+. Zero dependencies (standard library only).
 
 ## Quickstart
 
-Grab a sandbox key (`nbo_sandbox_…`) from the [dashboard](https://app.nombaone.xyz), set it as `NOMBAONE_API_KEY`, and you are three objects away from a live subscription:
+Grab a sandbox key (`nbo_sandbox_…`) from the [dashboard](https://console.nombaone.xyz), set it as `NOMBAONE_API_KEY`, and you are three objects away from a live subscription:
 
 ```go
 package main
